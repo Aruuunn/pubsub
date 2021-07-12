@@ -18,6 +18,12 @@ type Subscription struct {
 }
 
 
+func New() *PubSub {
+	return &PubSub {
+		channels: make(map[string]chan Message),
+	}
+}
+
 
 func (p *PubSub) getChannel(channelName string) chan Message {
 	channel, ok := p.channels[channelName]
@@ -72,6 +78,10 @@ func (p *PubSub) NewSubscription(channelNames []string) Subscription {
 	}
 }
 
+
+func  (subscription *Subscription) Channel() <-chan Message {
+	return subscription.pipeChannel
+}
 
 func (subscription *Subscription) UnSubscribe() {
 	subscription.cancel()
