@@ -10,6 +10,7 @@ type Message struct {
 
 type PubSub struct {
 	channels map[string] chan Message
+	context context.Context
 }
 
 type Subscription struct {
@@ -18,9 +19,10 @@ type Subscription struct {
 }
 
 
-func New() *PubSub {
+func New(ctx context.Context) *PubSub {
 	return &PubSub {
 		channels: make(map[string]chan Message),
+		context: ctx,
 	}
 }
 
@@ -42,9 +44,19 @@ func (p *PubSub) Publish(channelNames []string, value interface{}) {
 		channel := p.getChannel(channelName)
 
 		go func () {
-			channel <- Message {
+
+			message :=  Message {
 				ChannelName: channelName,
 				Value: value,
+			}
+
+			for {
+				select {
+					case channel <- message:
+						return
+					case <-p.context.Done():
+						return
+ 				}
 			}
 		}()
 	}
@@ -65,8 +77,11 @@ func (p *PubSub) NewSubscription(channelNames []string) Subscription {
 						go func () {
 							pipeChannel <- value
 						}()
+						return
 					case <- ctx.Done():
 						return
+					case <- p.context.Done():
+						return 
 				}
 			}
 		}()
