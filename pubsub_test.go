@@ -63,11 +63,11 @@ func TestPubSub(t *testing.T) {
 
 		ch := sub.Channel()
 
-		sub.UnSubscribe()
-
 		timeout := time.After(3 * time.Second)
 
 		p.Publish([]string{"one"}, 101)
+
+		sub.UnSubscribe()
 
 		for {
 			select {
