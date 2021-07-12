@@ -3,7 +3,7 @@ package pubsub_test
 import (
 	"context"
 	"log"
-	"pubsub"
+	"github.com/arunmurugan78/pubsub"
 	"testing"
 	"time"
 )
