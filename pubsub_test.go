@@ -2,10 +2,12 @@ package pubsub_test
 
 import (
 	"context"
-	"github.com/arunmurugan78/pubsub"
 	"log"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
+	"github.com/arunmurugan78/pubsub"
 )
 
 type Func func(message pubsub.Message, expectedChannelName string, expectedValue interface{})
@@ -104,4 +106,53 @@ func TestPubSub(t *testing.T) {
 		}
 
 	})
+}
+
+
+func TestPubSubWorstCase(t *testing.T) {
+	for i :=1; i<30; i++  {
+
+		var wg sync.WaitGroup
+		ctx := context.Background()
+		pbsb := pubsub.New(ctx)
+
+		channels := make([]string, 0)
+		subs := make([]*pubsub.Subscription, 0)
+
+		for j:=0;j<i;j++ {
+			channels = append(channels, strconv.Itoa(j))
+			subs = append(subs, pbsb.NewSubscription(channels))
+		}
+
+		channels = make([]string, 0)
+
+		for j:=0;j<i;j++ {
+			channels = append(channels, strconv.Itoa(j))
+			
+			pbsb.Publish(channels, j)
+
+
+			for k:=j; k<i;k ++ {
+				wg.Add(1)
+				go func (idx int, j int, l int){
+					defer wg.Done()	
+
+					
+					for c := 0; c< l-len(subs[idx].GetSubscribedChannels());c++ {					
+						message := <-subs[idx].Channel()
+						if message.Value != j {
+							log.Fatalf("Expected %d but go %d", j, message.Value)
+						}
+					}
+
+				}(k, j, len(channels))
+			}
+
+			wg.Wait()
+		}
+
+		for _, sub := range subs {
+			sub.UnSubscribe()
+		}
+	}
 }
