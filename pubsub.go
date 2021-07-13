@@ -129,3 +129,8 @@ func (subscription *Subscription) UnSubscribe() {
 		}
 	}
 }
+
+
+func (subscription *Subscription) GetSubscribedChannels() []string {
+	return subscription.subscribedChannels
+}
