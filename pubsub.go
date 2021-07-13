@@ -25,8 +25,10 @@ type Subscription struct {
 //PubSub is type which encapsulates the data related to the publish-subscriber pattern implementation.
 //It is to be instantiated only using New() function
 type PubSub struct {
-	context       context.Context
-	subscriptions map[string][]*Subscription
+	context       context.Context //Application Context
+
+	// Map of channelName to the list of subscriptions which have subscribed to this channel
+	subscriptions map[string][]*Subscription 
 }
 
 //The function to instantiate PubSub
