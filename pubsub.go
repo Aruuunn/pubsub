@@ -52,18 +52,18 @@ func (pubsub *PubSub) Publish(channelNames []string, value interface{}) {
 		for _, subscription := range subscriptions {
 			subscription.wg.Add(1)
 
-			go func() {
-				defer subscription.wg.Done()
+			go func(s *Subscription) {
+				defer s.wg.Done()
 
 				select {
-				case subscription.pipeChannel <- message:
+				case s.pipeChannel <- message:
 					return
 				case <-pubsub.context.Done():
 					return
-				case <-subscription.context.Done():
+				case <-s.context.Done():
 					return
 				}
-			}()
+			}(subscription)
 		}
 	}
 }
