@@ -20,18 +20,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"github.com/arunmurugan78/pubsub"
+	"sync"
 )
 
 func main() {
 	var wg sync.WaitGroup
 	ctx := context.Background()
 
-	//Create a new PubSub instance 
+	//Create a new PubSub instance
 	pbsb := pubsub.New(ctx)
 
-	channelNames := []string { "channelOne", "channelTwo" }
+	channelNames := []string{"channelOne", "channelTwo"}
 
 	//Subscribe to required channels
 	sub := pbsb.NewSubscription(channelNames)
@@ -40,25 +40,26 @@ func main() {
 	//Will get the published data through this channel
 	channel := sub.Channel()
 
-   wg.Add(1)
+	wg.Add(1)
 
-   go func () {
-	   defer wg.Done()
-	   select {
-		   case message := <-channel:
-			  // Received Data will be of type pubsub.Message
-			   fmt.Println("Received ", message.Value, " from ", message.ChannelName) 
-			   //Output "Received  100  from  channelTwo"
-		   case <-ctx.Done():
-			   return
-	   }
-   }()
+	go func() {
+		defer wg.Done()
+		select {
+		case message := <-channel:
+			// Received Data will be of type pubsub.Message
+			fmt.Println("Received ", message.Value, " from ", message.ChannelName)
+			//Output "Received  100  from  channelTwo"
+		case <-ctx.Done():
+			return
+		}
+	}()
 
-   //Publish data to the specified channels
-   //Here we are publishing value 100 to channelTwo
-   pbsb.Publish([]string { "channelTwo" }, 100 )
-   wg.Wait()
+	//Publish data to the specified channels
+	//Here we are publishing value 100 to channelTwo
+	pbsb.Publish([]string{"channelTwo"}, 100)
+	wg.Wait()
 }
+
 ```
 
 
