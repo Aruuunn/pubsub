@@ -33,11 +33,11 @@ func main() {
 
 	channelNames := []string{"channelOne", "channelTwo"}
 
-	//Subscribe to required channels
+	//Subscribe to required "channels"
 	sub := pbsb.NewSubscription(channelNames)
 	defer sub.UnSubscribe()
 
-	//Will get the published data through this channel
+	//Will get the published data through this go channel
 	channel := sub.Channel()
 
 	wg.Add(1)
