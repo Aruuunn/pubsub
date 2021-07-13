@@ -14,11 +14,11 @@ type Message struct {
 
 //Subscription will be returned after on calling NewSubscription. Should be unsubscribed on clean up
 type Subscription struct {
-	wg          *sync.WaitGroup
-	pubsub      *PubSub
-	cancel      context.CancelFunc
-	context     context.Context
-	pipeChannel chan Message
+	wg                 *sync.WaitGroup
+	pubsub             *PubSub
+	cancel             context.CancelFunc
+	context            context.Context
+	pipeChannel        chan Message
 	subscribedChannels []string
 }
 
@@ -49,10 +49,10 @@ func (pubsub *PubSub) Publish(channelNames []string, value interface{}) {
 
 		for _, subscription := range subscriptions {
 			subscription.wg.Add(1)
-			
+
 			go func() {
 				defer subscription.wg.Done()
-	
+
 				select {
 				case subscription.pipeChannel <- message:
 					return
@@ -73,12 +73,12 @@ func (pubsub *PubSub) NewSubscription(channelNames []string) *Subscription {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sub := Subscription{
-		pipeChannel: pipeChannel,
-		cancel:      cancel,
-		context:     ctx,
-		wg:new(sync.WaitGroup),
+		pipeChannel:        pipeChannel,
+		cancel:             cancel,
+		context:            ctx,
+		wg:                 new(sync.WaitGroup),
 		subscribedChannels: make([]string, 0),
-		pubsub: pubsub,
+		pubsub:             pubsub,
 	}
 
 	for _, channelName := range channelNames {
@@ -96,8 +96,8 @@ func (subscription *Subscription) Channel() <-chan Message {
 
 //Helper function to remove element at an index
 func remove(s []*Subscription, i int) []*Subscription {
-    s[len(s)-1], s[i] = s[i], s[len(s)-1]
-    return s[:len(s)-1]
+	s[len(s)-1], s[i] = s[i], s[len(s)-1]
+	return s[:len(s)-1]
 }
 
 func indexOf(s *Subscription, subscriptions []*Subscription) (index int) {
