@@ -12,7 +12,7 @@ type Message struct {
 	Value       interface{}
 }
 
-//Subscription will be returned after on calling NewSubscription. Should be unsubscribed on clean up
+//Subscription will be returned after on calling NewSubscription.
 type Subscription struct {
 	wg                 *sync.WaitGroup
 	pubsub             *PubSub
@@ -68,7 +68,7 @@ func (pubsub *PubSub) Publish(channelNames []string, value interface{}) {
 	}
 }
 
-//Create a NewSubscription. The returned subscription must be unsubscribed on clean up
+//Create a NewSubscription
 func (pubsub *PubSub) NewSubscription(channelNames []string) *Subscription {
 	pipeChannel := make(chan Message)
 
