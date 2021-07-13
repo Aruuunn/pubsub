@@ -2,8 +2,8 @@ package pubsub_test
 
 import (
 	"context"
-	"log"
 	"github.com/arunmurugan78/pubsub"
+	"log"
 	"testing"
 	"time"
 )
@@ -65,17 +65,15 @@ func TestPubSub(t *testing.T) {
 
 		timeout := time.After(3 * time.Second)
 
-		p.Publish([]string{"one"}, 101)
-
 		sub.UnSubscribe()
 
-		for {
-			select {
-			case <-ch:
-				log.Fatalf("Got published updates")
-			case <-timeout:
-				return
-			}
+		p.Publish([]string{"one"}, 101)
+
+		select {
+		case <-ch:
+			log.Fatalf("Got published updates")
+		case <-timeout:
+			return
 		}
 
 	})
@@ -90,9 +88,11 @@ func TestPubSub(t *testing.T) {
 
 		timeout := time.After(3 * time.Second)
 
+		cancel()
+
 		p.Publish([]string{"one"}, 101)
 
-		cancel()
+		time.Sleep(1 * time.Second)
 
 		for {
 			select {

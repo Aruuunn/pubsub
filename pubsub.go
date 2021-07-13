@@ -1,7 +1,10 @@
 //Package pubsub implements a simple Publish Subscribe Pattern in pure golang
 package pubsub
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // Message is the format in which data is being passed from one channel to another
 type Message struct {
@@ -9,93 +12,81 @@ type Message struct {
 	Value       interface{}
 }
 
+//Subscription will be returned after on calling NewSubscription. Should be unsubscribed on clean up
+type Subscription struct {
+	wg          *sync.WaitGroup
+	pubsub      *PubSub
+	cancel      context.CancelFunc
+	context     context.Context
+	pipeChannel chan Message
+	subscribedChannels []string
+}
+
 //PubSub is type which encapsulates the data related to the publish-subscriber pattern implementation.
 //It is to be instantiated only using New() function
 type PubSub struct {
-	channels map[string]chan Message
-	context  context.Context
-}
-
-//Subscription will be returned after a subscription. Should be unsubscribed on clean up
-type Subscription struct {
-	pipeChannel <-chan Message
-	cancel      context.CancelFunc
+	context       context.Context
+	subscriptions map[string][]*Subscription
 }
 
 //The function to instantiate PubSub
 func New(ctx context.Context) *PubSub {
 	return &PubSub{
-		channels: make(map[string]chan Message),
-		context:  ctx,
+		context:       ctx,
+		subscriptions: make(map[string][]*Subscription),
 	}
-}
-
-//Returns go channel related to the channelName, creates one if not present
-func (p *PubSub) getChannel(channelName string) chan Message {
-	channel, ok := p.channels[channelName]
-
-	if !ok {
-		channel = make(chan Message)
-		p.channels[channelName] = channel
-	}
-
-	return channel
 }
 
 //Publish data to the specified channels
-func (p *PubSub) Publish(channelNames []string, value interface{}) {
+func (pubsub *PubSub) Publish(channelNames []string, value interface{}) {
 	for _, channelName := range channelNames {
-		channel := p.getChannel(channelName)
+		subscriptions := pubsub.subscriptions[channelName]
 
-		go func() {
+		message := Message{
+			ChannelName: channelName,
+			Value:       value,
+		}
 
-			message := Message{
-				ChannelName: channelName,
-				Value:       value,
-			}
-
-			for {
+		for _, subscription := range subscriptions {
+			subscription.wg.Add(1)
+			
+			go func() {
+				defer subscription.wg.Done()
+	
 				select {
-				case channel <- message:
+				case subscription.pipeChannel <- message:
 					return
-				case <-p.context.Done():
+				case <-pubsub.context.Done():
+					return
+				case <-subscription.context.Done():
 					return
 				}
-			}
-		}()
+			}()
+		}
 	}
 }
 
 //Create a NewSubscription. The returned subscription must be unsubscribed on clean up
-func (p *PubSub) NewSubscription(channelNames []string) Subscription {
+func (pubsub *PubSub) NewSubscription(channelNames []string) *Subscription {
 	pipeChannel := make(chan Message)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	for _, channelName := range channelNames {
-		channel := p.getChannel(channelName)
-
-		go func() {
-			for {
-				select {
-				case value := <-channel:
-					go func() {
-						pipeChannel <- value
-					}()
-					return
-				case <-ctx.Done():
-					return
-				case <-p.context.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	return Subscription{
+	sub := Subscription{
 		pipeChannel: pipeChannel,
 		cancel:      cancel,
+		context:     ctx,
+		wg:new(sync.WaitGroup),
+		subscribedChannels: make([]string, 0),
+		pubsub: pubsub,
 	}
+
+	for _, channelName := range channelNames {
+		sub.subscribedChannels = append(sub.subscribedChannels, channelName)
+		pubsub.subscriptions[channelName] = append(pubsub.subscriptions[channelName], &sub)
+	}
+
+	return &sub
 }
 
 //The channel returned will recieve data from the published data to the subscribed channels
@@ -103,7 +94,36 @@ func (subscription *Subscription) Channel() <-chan Message {
 	return subscription.pipeChannel
 }
 
+//Helper function to remove element at an index
+func remove(s []*Subscription, i int) []*Subscription {
+    s[len(s)-1], s[i] = s[i], s[len(s)-1]
+    return s[:len(s)-1]
+}
+
+func indexOf(s *Subscription, subscriptions []*Subscription) (index int) {
+	index = -1
+
+	for i, sub := range subscriptions {
+		if sub == s {
+			index = i
+		}
+	}
+
+	return
+}
+
 //Unsubscribe to the subscribed channels
 func (subscription *Subscription) UnSubscribe() {
+	pubsub := subscription.pubsub
+
 	subscription.cancel()
+	subscription.wg.Wait()
+
+	for _, channelName := range subscription.subscribedChannels {
+		idx := indexOf(subscription, pubsub.subscriptions[channelName])
+
+		if idx != -1 {
+			pubsub.subscriptions[channelName] = remove(pubsub.subscriptions[channelName], idx)
+		}
+	}
 }
